@@ -37,6 +37,6 @@ const router = express.Router();
  * Request Body:
  *   - deckId: The UID of a deck in the database that will be checked or moderated
  */
-router.post('/:id', verifyFirebaseToken, geminiModerationController) // put verifyFirebaseToken as second parameter to enable jwt verification
+router.post('/:id', geminiModerationController) // put verifyFirebaseToken as second parameter to enable jwt verification
 
 export default router;

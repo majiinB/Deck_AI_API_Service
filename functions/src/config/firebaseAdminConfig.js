@@ -35,11 +35,7 @@ import { readFileSync } from 'fs'
 
 dotenv.config();
 
-const serviceAccount = JSON.parse(readFileSync(process.env.KEY_FILE, "utf-8"));
-
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-})
+admin.initializeApp();
 
 export const db = admin.firestore();
 export const timeStamp = admin.firestore.Timestamp.now();

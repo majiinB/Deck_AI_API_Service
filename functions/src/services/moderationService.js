@@ -17,7 +17,7 @@
  * @updated 2025-03-19
  */
 import { getDeckById } from "../repositories/deckRepository.js";
-import { sendPromptModeration, countToken, sendPromptInline} from "../services/aiService.js";
+import { sendPromptModeration, countToken, sendPromptInline} from "./aiService.js";
 import { moderatedFlashcardsSchema } from '../schema/flashcardModerationSchema.js';
 
 /**

@@ -16,7 +16,7 @@
  * @updated 2025-03-20
  */
 import { getDeckById, getDeckAndCheckField, updateDeck, getNewFlashcards } from "../repositories/deckRepository.js";
-import { sendPromptInline } from "../services/aiService.js";
+import { sendPromptInline } from "./aiService.js";
 import { quizSchema } from "../schema/quizSchema.js";
 import { createQuizForDeck, createQuestionAndAnswer, getQuizByDeckIDAndQuizType } from "../repositories/quizRepository.js";
 import { timeStamp } from "../config/firebaseAdminConfig.js";
