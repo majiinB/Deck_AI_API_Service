@@ -87,11 +87,6 @@ export async function createQuestionAndAnswer(quizId, questionAndAnswer) {
             throw new Error("INVALID_QUESTION_AND_ANSWER_DATA");
         }
 
-        // Validate questionAndAnswer structure
-        for (const item of questionAndAnswer) {
-            
-        }
-
         // Reference to Firestore collection
         const ref = db.collection('quiz').doc(quizId).collection('question_and_answers');
 
