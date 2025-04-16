@@ -28,7 +28,7 @@
  * 
  * @author Arthur M. Artugue
  * @created 2024-06-10
- * @updated 2025-03-14
+ * @updated 2025-04-16
  */
 import * as functions from "firebase-functions";
 import express from "express";
@@ -89,6 +89,5 @@ app.get('/v2/deck/hi', async (req, res) => {
     return res.status(200).json({ message: 'Hi! the server is active' });
 });
 
-// eslint-disable-next-line camelcase
 export const deck_ai_api = functions.https.onRequest(app);
 
