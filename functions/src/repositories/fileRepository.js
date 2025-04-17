@@ -17,12 +17,14 @@
  */
 
 import { Storage } from '@google-cloud/storage';
+import path from 'path';
+import fs from 'fs';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
 /**
- * Downloads a file from Google Cloud Storage.
- * 
+ * Downloads a file from Google Cloud Storage to the /tmp directory.
+ *
  * @async
  * @param {string} fileName - The name of the file to download.
  * @param {string} fileExtension - The file extension to append to the downloaded file.
@@ -32,22 +34,30 @@ dotenv.config();
 export async function downloadFile(fileName, fileExtension, id) {
     let filePath = '';
     try {
-        const storage = new Storage({
-            keyFilename: process.env.KEY_FILE.toString(),
-        });
-
-        const bucketName = process.env.STORAGE_BUCKET.toString();
-        const destFilename = `download-${id}${fileExtension}`;
-        const options = { destination: `./downloads/${destFilename}` };
-
-        await storage.bucket(bucketName).file(`uploads/${id}/${fileName}`).download(options);
-        filePath = `./downloads/${destFilename}`;
+      const storage = new Storage({
+        keyFilename: process.env.KEY_FILE.toString(),
+      });
+  
+      const bucketName = process.env.STORAGE_BUCKET.toString();
+      const destFilename = `download-${id}${fileExtension}`;
+      const tmpDir = '/tmp';
+      const tmpFilePath = path.join(tmpDir, destFilename);
+  
+      // Ensure the /tmp directory exists
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir);
+      }
+  
+      const options = { destination: tmpFilePath };
+  
+      await storage.bucket(bucketName).file(`uploads/${id}/${fileName}`).download(options);
+      filePath = tmpFilePath;
     } catch (error) {
-        console.log(`DOWNLOAD PDF ERROR: ${error}`);
-        filePath = '';
+      console.error(`DOWNLOAD FILE ERROR: ${error}`);
+      filePath = '';
     }
     return filePath;
-}
+  }
 
 /**
  * Downloads a PDF from Google Cloud Storage.
@@ -77,3 +87,18 @@ export async function downloadPdf(fileName, id) {
     }
     return filePath;
 }
+
+/**
+ * Deletes a file from the /tmp directory.
+ *
+ * @param {string} filename - The name of the file to delete.
+ */
+export function cleanupTempFile(filePath) {
+    fs.unlink(filePath, (err) => {
+      if (err) {
+        console.error(`Error deleting file ${filePath}:`, err);
+      } else {
+        console.log(`Successfully deleted file ${filePath}`);
+      }
+    });
+  }

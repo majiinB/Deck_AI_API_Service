@@ -19,9 +19,9 @@
  * 
  */
 
-import { cleanTitle, deleteFile } from '../utils/utils.js';
+import { cleanTitle } from '../utils/utils.js';
 import { sendPromptFlashcardGeneration } from './aiService.js';
-import { downloadFile, downloadPdf } from "../repositories/fileRepository.js";
+import { cleanupTempFile, downloadFile, downloadPdf } from "../repositories/fileRepository.js";
 import { createDeck, createFlashcard } from '../repositories/deckRepository.js';
 import { timeStamp } from '../config/firebaseAdminConfig.js';
 
@@ -56,6 +56,7 @@ export const geminiFlashcardService = async (request, id) => {
                 is_deleted: false,
                 is_private: true,
                 title: cleanTitle(deckTitle),
+                flashcard_count: flashcards.length,
                 owner_id: id,
                 cover_photo: coverPhoto
             });
@@ -78,7 +79,7 @@ export const geminiFlashcardService = async (request, id) => {
                 data: null
             };
         } finally {
-            deleteFile(filePath);
+            cleanupTempFile(filePath);
         }
     } else {
         try {
@@ -91,6 +92,7 @@ export const geminiFlashcardService = async (request, id) => {
                 is_deleted: false,
                 is_private: true,
                 title: cleanTitle(deckTitle),
+                flashcard_count: flashcards.length,
                 owner_id: id,
                 cover_photo: coverPhoto
             });

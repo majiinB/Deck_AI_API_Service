@@ -45,7 +45,7 @@ export function delay(ms) {
  * @returns {boolean} - True if the value is an integer between 2 and 20, otherwise false.
  */
 export function isValidInteger(value) {
-    return typeof value === 'number' && Number.isInteger(value) && value > 1 && value <= 20;
+    return typeof value === 'number' && Number.isInteger(value) && value > 9 && value <= 50;
 }
 
 /**
@@ -102,27 +102,6 @@ export function extractPdfText(pdfFilePath) {
             reject(error);
         }
     });
-}
-
-/**
- * Deletes a file from the file system.
- * @param {string} filePath - The path to the file to delete.
- * @returns {boolean} - True if the file was successfully deleted, otherwise false.
- */
-export function deleteFile(filePath) {
-    try {
-        fs.unlinkSync(filePath);
-        console.log('File deleted successfully');
-        return true;
-    } catch (err) {
-        if (err.code === 'ENOENT') {
-            console.log('File does not exist');
-            return false;
-        } else {
-            console.error('Error deleting file:', err);
-            return false;
-        }
-    }
 }
 
 /**
