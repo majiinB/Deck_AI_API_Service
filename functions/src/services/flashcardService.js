@@ -35,19 +35,37 @@ import { timeStamp } from '../config/firebaseAdminConfig.js';
  * @returns {Promise<Object>} Response object containing the generated flashcards or error message.
  */
 export const geminiFlashcardService = async (request, id) => {
-    const { subject, topic, addDescription, fileName, fileExtension, numberOfFlashcards, deckTitle, coverPhotoRef  } = request.body;
+    const { subject, topic, deckDescription, fileName, fileExtension, numberOfFlashcards, title, description, coverPhoto  } = request.body;
     
-    const coverPhoto = coverPhotoRef || 'https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0';
+    const coverPhotoRef = coverPhoto ?? 'https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0';
 
-    const prompt = constructFlashCardGenerationPrompt(topic, subject, addDescription, numberOfFlashcards);
+    const prompt = constructFlashCardGenerationPrompt(topic, subject, deckDescription, numberOfFlashcards);
 
     if (fileName?.trim()) {
-        if (!fileExtension?.trim()) return { status: 422, message: 'File extension is required.', data: null };
+        if (!fileExtension?.trim()) {
+            return { 
+                status: 422, 
+                message: 'An error occured during the generation of deck', 
+                data: {
+                    error: 'MISSING_FILE_EXTENSION',
+                    message: 'File extension is a required field if file is given.'
+                }
+            };
+        }
 
         try {
             const filePath = await downloadFile(fileName, fileExtension, id);
 
-            if (!filePath) return { status: 500, message: 'Error retrieving the file from the server.', data: null };
+            if (!filePath){
+                return { 
+                    status: 500, 
+                    message: 'An error occured during the generation of deck', 
+                    data: {
+                        error: 'FILE_RETRIEVAL_FAILURE',
+                        message: 'Error retrieving the file from the server.'
+                    }
+                };
+            } 
 
             const response = await sendPromptFlashcardGeneration(true, prompt, filePath, fileExtension);
             const flashcards = response.data.terms_and_definitions;
@@ -55,10 +73,11 @@ export const geminiFlashcardService = async (request, id) => {
                 created_at: timeStamp,
                 is_deleted: false,
                 is_private: true,
-                title: cleanTitle(deckTitle),
+                title: cleanTitle(title),
+                description: description,
                 flashcard_count: flashcards.length,
                 owner_id: id,
-                cover_photo: coverPhoto
+                cover_photo: coverPhotoRef
             });
 
             await createFlashcard(deckId, flashcards);
@@ -68,15 +87,19 @@ export const geminiFlashcardService = async (request, id) => {
                 request_owner_id: id,
                 message: response.message,
                 data: {
-                    deckId: deckId
+                    deck_id: deckId
                 }
             };
         } catch (error) {
+            console.log(error);
             return {
                 status: 500,
                 request_owner_id: id,
                 message: 'An Error has occured while sending information to AI.',
-                data: null
+                data: {
+                    error: 'UNKNOWN_SERVER_ERROR',
+                    message: 'An unknown error was encountered. Please try again later'
+                }
             };
         } finally {
             cleanupTempFile(filePath);
@@ -91,10 +114,11 @@ export const geminiFlashcardService = async (request, id) => {
                 created_at: timeStamp,
                 is_deleted: false,
                 is_private: true,
-                title: cleanTitle(deckTitle),
+                title: cleanTitle(title),
+                description: description,
                 flashcard_count: flashcards.length,
                 owner_id: id,
-                cover_photo: coverPhoto
+                cover_photo: coverPhotoRef
             });
 
             await createFlashcard(deckId, flashcards);
@@ -104,16 +128,19 @@ export const geminiFlashcardService = async (request, id) => {
                 request_owner_id: id,
                 message: response.message,
                 data: {
-                    deckId: deckId // Replace with flashcards to show the processed ai response
+                    deck_id: deckId
                 }
             };
         } catch (error) {
-            console.error('Error during file retrieval:', error);
+            console.log(error);
             return {
                 status: 500,
                 request_owner_id: id,
-                message: 'An Error has occured and while retrieving response from AI',
-                data: null
+                message: 'An Error has occured while sending information to AI.',
+                data: {
+                    error: 'UNKNOWN_SERVER_ERROR',
+                    message: 'An unknown error was encountered. Please try again later'
+                }
             };
         }
     }

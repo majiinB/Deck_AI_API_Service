@@ -53,7 +53,16 @@ export const verifyFirebaseToken = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ error: "Unauthorized: No token provided" });
+        return res.status(401).json(
+            { 
+                status: 403, 
+                message: 'An error occured during the generation of deck', 
+                data: {
+                    error: 'UNAUTHORIZED',
+                    message: `Unauthorized: No token provided, ${error.message}`
+                }
+            }
+        );
     }
 
     const token = authHeader.split(" ")[1];
@@ -63,7 +72,16 @@ export const verifyFirebaseToken = async (req, res, next) => {
         req.user = decodedToken;  // Attach user data to request
         next(); // Proceed to the next middleware
     } catch (error) {
-        return res.status(403).json({ error: "Unauthorized: Invalid token: " + error });
+        return res.status(403).json(
+            {
+                status: 403, 
+                message: 'An error occured during the generation of deck', 
+                data: {
+                    error: 'UNAUTHORIZED',
+                    message: `Unauthorized: Invalid token provided, ${error.message}`
+                }
+            }
+        );
     }
 };
 

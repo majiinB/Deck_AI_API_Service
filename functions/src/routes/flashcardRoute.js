@@ -54,6 +54,6 @@ const router = express.Router();
  *   - fileExtension: File extension (e.g., pdf, txt)
  *   - numberOfFlashcards: Number of flashcards to generate (2-20)
  */
-router.post('/:id', verifyFirebaseToken, geminiFlashcardController) // put verifyFirebaseToken as second parameter to enable jwt verification
+router.post('/', verifyFirebaseToken, geminiFlashcardController) // put verifyFirebaseToken as second parameter to enable jwt verification
 
 export default router;

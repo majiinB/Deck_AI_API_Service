@@ -89,11 +89,12 @@ export async function sendPromptFlashcardGeneration(isTherePdf, prompt, filePath
 
             // Ensure response is valid
             if (!result?.response?.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("INVALID_RESPONSE_FORMAT");
+
             const response = JSON.parse(result.response.candidates[0].content.parts[0].text);
+
             if(!validateFlashcardResponse(response)) throw new Error("INVALID_RESPONSE_FORMAT");
 
             return {
-                success: true,
                 message: "Prompt was sent successfully",
                 data: response,
             };

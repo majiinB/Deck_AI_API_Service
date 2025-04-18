@@ -38,7 +38,7 @@ export const geminiFlashcardController = async (req, res) => {
         return res.status(400).json({
                 status: 400,
                 request_owner_id: userID,
-                message: 'An error occured during the creation of deck',
+                message: 'An error occured during the generation of deck',
                 data: {
                     error: 'LACK_OF_INFO_AND_CONTEXT',
                     message: 'Subject or topic is required if no file was given as a ' +
@@ -51,9 +51,9 @@ export const geminiFlashcardController = async (req, res) => {
         return res.status(400).json({
                 status: 400,
                 request_owner_id: userID,
-                message: 'An error occured during the creation of deck',
+                message: 'An error occured during the generation of deck',
                 data: {
-                    error: 'MISSING_REQUIRED_FIELD_TITILE',
+                    error: 'MISSING_REQUIRED_FIELD_TITLE',
                     message: 'request is missing the required field: title'
                 }
             });
@@ -63,7 +63,7 @@ export const geminiFlashcardController = async (req, res) => {
         return res.status(400).json({
                 status: 400,
                 request_owner_id: userID,
-                message: 'An error occured during the creation of deck',
+                message: 'An error occured during the generation of deck',
                 data: {
                     error: 'MISSING_REQUIRED_FIELD_DESCRIPTION',
                     message: 'request is missing the required field: description'
@@ -76,13 +76,27 @@ export const geminiFlashcardController = async (req, res) => {
         return res.status(422).json({ 
             status: 422,
             request_owner_id: userID,
-            message: 'An error occured during the creation of deck',
+            message: 'An error occured during the generation of deck',
             data: {
                 error: 'INVALID_NUMBER',
                 message: 'Invalid number of flashcards. It must be between 10 and 50.'
             }
         });
     }
+
+    const coverPhotoRegex = /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/deck-f429c\.appspot\.com\/o\/deckCovers%2F[\w-]+%2F[\w-]+(?:\.(png|jpg|jpeg|webp))?\?alt=media&token=[\w-]+$/;
+
+    if (coverPhoto && !coverPhotoRegex.test(coverPhoto)) {
+        return res.status(400).json({
+            status: 400,
+            request_owner_id: userID,
+            message: 'An error occurred during the generation of deck',
+            data: {
+                error: 'INVALID_COVER_PHOTO_URL',
+                message: 'coverPhoto must be a valid Firebase Storage image URL'
+            }
+    });
+}
 
     const result = await geminiFlashcardService(req, userID);
     res.status(result.status).json(result);
