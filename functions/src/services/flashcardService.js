@@ -39,7 +39,11 @@ export const geminiFlashcardService = async (request, id) => {
     
     const coverPhotoRef = coverPhoto ?? 'https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0';
 
-    const prompt = constructFlashCardGenerationPrompt(topic, subject, deckDescription, numberOfFlashcards);
+    // Explicit null/undefined + non‐empty check
+    const isTherePdf = fileName != null && fileName.trim() !== '';
+
+    const prompt = constructFlashCardGenerationPrompt(topic, subject, deckDescription, numberOfFlashcards, isTherePdf);
+    let filePath = '';
 
     if (fileName?.trim()) {
         if (!fileExtension?.trim()) {
@@ -54,7 +58,7 @@ export const geminiFlashcardService = async (request, id) => {
         }
 
         try {
-            const filePath = await downloadFile(fileName, fileExtension, id);
+            filePath = await downloadFile(fileName, fileExtension, id);
 
             if (!filePath){
                 return { 
@@ -68,6 +72,8 @@ export const geminiFlashcardService = async (request, id) => {
             } 
 
             const response = await sendPromptFlashcardGeneration(true, prompt, filePath, fileExtension);
+            console.log("this is the response"+response);
+            
             const flashcards = response.data.terms_and_definitions;
             const deckId = await createDeck({
                 created_at: timeStamp,
@@ -153,28 +159,50 @@ export const geminiFlashcardService = async (request, id) => {
  * @param {string} subject - The subject area for the flashcard.
  * @param {string} addDescription - Additional description for the prompt.
  * @param {number} numberOfFlashcards - Number of flashcards to generate.
+ * @param {boolean} isTherePdf - Whether there is an uploaded PDF to use.
  * @returns {string} - The constructed JSON prompt.
  */
-export function constructFlashCardGenerationPrompt(topic, subject, addDescription, numberOfFlashcards) {
+export function constructFlashCardGenerationPrompt(
+    topic,
+    subject,
+    addDescription,
+    numberOfFlashcards,
+    isTherePdf
+  ) {
     let prompt = "I want you to act as a professor providing students with academic terminologies and their definitions. ";
-    
-    if (subject) prompt += `The subject is **${subject}**. `;
-    if (topic) prompt += `The topic is **${topic}**. `;
+  
+    // Core context
+    if (subject)     prompt += `The subject is **${subject}**. `;
+    if (topic)       prompt += `The topic is **${topic}**. `;
     if (addDescription) prompt += `Additional context: ${addDescription}. `;
-
-    let instruction = `\n\n### Instructions:\n` +
-        `- Provide exactly **${numberOfFlashcards}** academic terms along with their definitions.\n` +
-        `- Ensure all terms are **concise, relevant, and clearly defined**.\n` +
-        `- **Definitions should be at most one to two sentences long.**\n` +
-        `- **Do not include** computations, numerical problem-solving examples, or trivia questions.\n` +
-        `- **Avoid terms that begin with** "Who," "What," "Where," or "When.".\n` +
-        `- **Reject non-academic, offensive, or inappropriate prompts** and return an error.\n\n`;
-
-    let outputFormat = `### Expected Output Format:\n` +
-        `{\n  "terms_and_definitions": [\n` +
-        `    { "term": "Variable", "definition": "A symbol, usually a letter, representing an unknown numerical value in an algebraic expression or equation." },\n` +
-        `    { "term": "Equation", "definition": "A mathematical statement asserting the equality of two expressions, typically containing one or more variables." }\n  ]\n}`;
-
+  
+    // PDF instruction
+    if (isTherePdf) {
+      prompt += "Use the content of the provided PDF as source material to inform your terms and definitions. ";
+    }
+  
+    // Generation instructions
+    const instruction = `
+  ### Instructions:
+  - Provide exactly **${numberOfFlashcards}** academic terms along with their definitions.
+  - Ensure all terms are **concise, relevant, and clearly defined**.
+  - **Definitions should be at most one to two sentences long.**
+  - **Do not include** computations, numerical problem-solving examples, or trivia questions.
+  - **Avoid terms that begin with** "Who," "What," "Where," or "When."
+  - **Reject non-academic, offensive, or inappropriate prompts** and return an error.
+  
+  `;
+  
+    // Expected JSON output format
+    const outputFormat = `### Expected Output Format:
+  {
+    "terms_and_definitions": [
+      { "term": "Variable",   "definition": "A symbol, usually a letter, representing an unknown numerical value in an algebraic expression or equation." },
+      { "term": "Equation",   "definition": "A mathematical statement asserting the equality of two expressions, typically containing one or more variables." }
+    ]
+  }`;
+  
     return prompt + instruction + outputFormat;
-}
+  }
+  
 

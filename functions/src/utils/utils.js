@@ -28,6 +28,7 @@
 import { PDFExtract } from 'pdf.js-extract';
 import fs from 'fs';
 import * as dotenv from 'dotenv';
+import mime from 'mime';
 dotenv.config();
 
 /**

@@ -99,6 +99,8 @@ export const geminiFlashcardController = async (req, res) => {
 }
 
     const result = await geminiFlashcardService(req, userID);
+    console.log(result);
+    
     res.status(result.status).json(result);
     return;
 }

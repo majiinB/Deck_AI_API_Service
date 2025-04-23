@@ -34,9 +34,7 @@ dotenv.config();
 export async function downloadFile(fileName, fileExtension, id) {
     let filePath = '';
     try {
-      const storage = new Storage({
-        keyFilename: process.env.KEY_FILE.toString(),
-      });
+      const storage = new Storage();
   
       const bucketName = process.env.STORAGE_BUCKET.toString();
       const destFilename = `download-${id}${fileExtension}`;

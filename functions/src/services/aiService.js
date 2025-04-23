@@ -20,6 +20,7 @@
 import { getModel, fileManager } from '../config/geminiConfig.js';
 import { promptFlashCardSchema } from '../schema/promptFlashCardSchema.js'
 import { moderatedFlashcardsSchema } from '../schema/flashcardModerationSchema.js';
+import { getMimeType } from '../utils/utils.js';
 // import { Threads } from 'openai/resources/beta/index.mjs';
 
 /**
@@ -54,26 +55,30 @@ export async function sendPromptFlashcardGeneration(isTherePdf, prompt, filePath
             if (isTherePdf && (typeof fileExtension !== "string" || fileExtension.trim() === "")) {
                 throw new Error("Invalid argument: fileExtension must be a non-empty string when isTherePdf is true.");
             }
-
+            
             let result;
             const model = getModel(promptFlashCardSchema, "gemini-2.0-flash");
-
+        
             if (isTherePdf) {
                 // Validate file extension
                 const fileType = getMimeType(fileExtension);
+                
                 if (!fileType) {
                     throw new Error("Unsupported file type. Please provide a valid file extension.");
                 }
 
                 // Upload file and wait for activation
                 const files = [await uploadToGemini(filePath, fileType)];
-                await waitForFilesActive(files);
 
+                if(files.length < 0) throw new Error("No files were returned");
+                
+                await waitForFilesActive(files);
+                
                 // Ensure file upload was successful
                 if (!files[0]?.uri) {
                     throw new Error("File upload failed. No URI received.");
                 }
-
+            
                 result = await model.generateContent([
                     {
                         fileData: {
@@ -83,13 +88,19 @@ export async function sendPromptFlashcardGeneration(isTherePdf, prompt, filePath
                     },
                     { text: prompt },
                 ]);
+
+                //Delete the file after use
+                const fullName = files[0].name; 
+                const fileId = fullName.split('/').pop();
+                await deleteFileInGemini(fileId);
+                
             } else {
                 result = await model.generateContent(prompt);
             }
-
+        
             // Ensure response is valid
             if (!result?.response?.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("INVALID_RESPONSE_FORMAT");
-
+            
             const response = JSON.parse(result.response.candidates[0].content.parts[0].text);
 
             if(!validateFlashcardResponse(response)) throw new Error("INVALID_RESPONSE_FORMAT");
@@ -101,7 +112,7 @@ export async function sendPromptFlashcardGeneration(isTherePdf, prompt, filePath
 
         } catch (error) {
             const retryableErrors = ["NetworkError", "TimeoutError", "ServiceUnavailable", "INVALID_RESPONSE_FORMAT"];
-            console.error(`Error on attempt ${attempt + 1}: ${error.message}`);
+            console.error(`Error on attempt ${attempt + 1}: ${error} ${error.message}`);
 
             if (!retryableErrors.includes(error.name)) {
                 console.error("Non-retryable error encountered:", error.message);
@@ -285,6 +296,22 @@ export async function uploadToGemini(path, mimeType) {
 }
 
 /**
+ * Deletes a file in Gemini cloud.
+ * 
+ * @async
+ * @param {string} fileName - The filename of the uploaded file in the cloud.
+ */
+export async function deleteFileInGemini(fileId) {
+    try {
+        await fileManager.deleteFile(fileId);
+        console.log(`Deleted file ${fileId}`);
+    } catch (error) {
+        console.log("Error while deleting file in google gemini cloud");
+        throw new Error(error.message);
+    }
+}
+
+/**
  * Waits until all uploaded files are in the 'ACTIVE' state.
  * 
  * @async
@@ -292,7 +319,7 @@ export async function uploadToGemini(path, mimeType) {
  * @throws {Error} - If a file fails to become active.
  */
 export async function waitForFilesActive(files) {
-    console.log(`Waiting for file ${file.name} to become active...`);
+    console.log(`Waiting for file ${files.name} to become active...`);
     for (const name of files.map((file) => file.name)) {
         let file = await fileManager.getFile(name);
         while (file.state === "PROCESSING") {
