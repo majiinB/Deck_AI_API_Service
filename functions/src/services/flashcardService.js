@@ -15,7 +15,7 @@
  * 
  * @author Arthur M. Artugue
  * @created 2025-02-12
- * @updated 2025-03-20
+ * @updated 2025-05-12
  * 
  */
 
@@ -24,6 +24,8 @@ import { sendPromptFlashcardGeneration } from './aiService.js';
 import { cleanupTempFile, downloadFile, downloadPdf } from "../repositories/fileRepository.js";
 import { createDeck, createFlashcard } from '../repositories/deckRepository.js';
 import { timeStamp } from '../config/firebaseAdminConfig.js';
+import { embedDeck } from '../config/geminiConfig.js';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * Generates AI-generated flashcards using Gemini.
@@ -71,10 +73,18 @@ export const geminiFlashcardService = async (request, id) => {
                 };
             } 
 
-            const response = await sendPromptFlashcardGeneration(true, prompt, filePath, fileExtension);
-            console.log("this is the response"+response);
+            const flashcardPromise = sendPromptFlashcardGeneration(true, prompt, filePath, fileExtension);
+            const embedPromise = embedDeck(`Deck title: ${title}, Description: ${description}`);
+
+            const [flashcardResponse, embedResponse] = await Promise.all([
+                flashcardPromise,
+                embedPromise
+            ]);
+
+            const firstEmbedObj = embedResponse.embeddings[0];
+            const vector = firstEmbedObj.values;
             
-            const flashcards = response.data.terms_and_definitions;
+            const flashcards = flashcardResponse.data.terms_and_definitions;
             const deckId = await createDeck({
                 created_at: timeStamp,
                 is_deleted: false,
@@ -83,7 +93,8 @@ export const geminiFlashcardService = async (request, id) => {
                 description: description,
                 flashcard_count: flashcards.length,
                 owner_id: id,
-                cover_photo: coverPhotoRef
+                cover_photo: coverPhotoRef,
+                embedding_field: FieldValue.vector(vector),
             });
 
             await createFlashcard(deckId, flashcards);
@@ -91,7 +102,7 @@ export const geminiFlashcardService = async (request, id) => {
             return {
                 status: 200,
                 request_owner_id: id,
-                message: response.message,
+                message: flashcardResponse.message,
                 data: {
                     deck_id: deckId
                 }
@@ -112,9 +123,19 @@ export const geminiFlashcardService = async (request, id) => {
         }
     } else {
         try {
-            const response = await sendPromptFlashcardGeneration(false, prompt);
+
+            const flashcardPromise = sendPromptFlashcardGeneration(false, prompt, filePath, fileExtension);
+            const embedPromise = embedDeck(`Deck title: ${title}, Description: ${description}`);
+
+            const [flashcardResponse, embedResponse] = await Promise.all([
+                flashcardPromise,
+                embedPromise
+            ]);
+
+            const firstEmbedObj = embedResponse.embeddings[0];
+            const vector = firstEmbedObj.values;
           
-            const flashcards = response.data.terms_and_definitions;
+            const flashcards = flashcardResponse.data.terms_and_definitions;
             
             const deckId = await createDeck({
                 created_at: timeStamp,
@@ -124,7 +145,8 @@ export const geminiFlashcardService = async (request, id) => {
                 description: description,
                 flashcard_count: flashcards.length,
                 owner_id: id,
-                cover_photo: coverPhotoRef
+                cover_photo: coverPhotoRef,
+                embedding_field: FieldValue.vector(vector),
             });
 
             await createFlashcard(deckId, flashcards);
@@ -132,7 +154,7 @@ export const geminiFlashcardService = async (request, id) => {
             return {
                 status: 200,
                 request_owner_id: id,
-                message: response.message,
+                message: flashcardResponse.message,
                 data: {
                     deck_id: deckId
                 }

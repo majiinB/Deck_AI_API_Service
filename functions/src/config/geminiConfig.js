@@ -25,11 +25,12 @@
  * 
  * @author Arthur M. Artugue
  * @created 2024-06-10
- * @updated 2024-10-26
+ * @updated 2025-05-12
  */
 
 import * as dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import {GoogleGenAI} from "@google/genai";
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
 import { isJson } from '../utils/utils.js';
@@ -52,7 +53,13 @@ export const fileManager = new GoogleAIFileManager(apiKey);
 /**
  * Instance of GoogleGenerativeAI for interacting with the AI models.
  */
-export const genAI = new GoogleGenerativeAI(apiKey);
+export const generativeAI = new GoogleGenerativeAI(apiKey);
+
+/**
+ * Instance of GoogleGenAI for interacting with the AI models.
+ */
+export const genAI = new GoogleGenAI({apiKey: apiKey});
+
 
 /**
  * Configuration options to control the behavior of AI-generated responses.
@@ -113,11 +120,34 @@ export const getModel = (format = null, model = "gemini-1.5-flash") => {
         }
     }
 
-    return genAI.getGenerativeModel({
+    return generativeAI.getGenerativeModel({
         model: model,
         generationConfig: generationConfig,
         // safetySettings: safetySettings
     });
 }
+
+/**
+ * Embeds a decks' title and description using the Google Generative AI service.
+ * @param {string} titleAndDescription - The text to be embedded.
+ * @return {Promise<any>} A promise that resolves with the embedding response.
+ */
+export const embedDeck = async (titleAndDescription) => {
+    try {
+        const response = await genAI.models.embedContent({
+            model: "gemini-embedding-exp-03-07",
+            contents: [titleAndDescription],
+            config: {
+                taskType: "RETRIEVAL_DOCUMENT",
+                outputDimensionality: 768,
+            },
+        });
+        return response;
+    } catch (error) {
+        console.error("Error embedding text:", error);
+        throw error;
+    }
+};
+
 
 
