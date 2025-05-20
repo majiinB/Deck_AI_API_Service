@@ -20,7 +20,7 @@ import { geminiQuizService } from '../services/quizService.js';
 
 export const geminiQuizController = async (req, res) => {
     const { deckId } = req.body;
-    const userId = req.params.id;
+    const userId = req.user?.user_id;
 
     if (!deckId || !deckId.trim()) {
         return res.status(400).json(

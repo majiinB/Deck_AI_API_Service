@@ -30,6 +30,6 @@ const router = express.Router();
  * Request Body:
  *   - deckId: The UID of a deck in the database that will be the reference for creating the quiz.
  */
-router.post('/:id', geminiQuizController) // put verifyFirebaseToken as second parameter to enable jwt verification
+router.post('/', verifyFirebaseToken, geminiQuizController) // put verifyFirebaseToken as second parameter to enable jwt verification
 
 export default router;

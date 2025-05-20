@@ -204,3 +204,73 @@ export async function getQuizByDeckIDAndQuizType(deckId, quizType) {
     }
 }
 
+/**
+ * Retrieves a quiz by quiz ID along with its question_and_answer subcollection and their choices.
+ *
+ * @async
+ * @function getQuizByID
+ * @param {string} quizId - The unique identifier of the quiz.
+ * @param {string} quizType - The type of the quiz to filter by.
+ * @returns {Promise<Object|null>} - Returns a quiz object with nested questions and choices, or null if not found.
+ * @throws {Error} - Throws an error if input validation fails or Firestore retrieval fails.
+ */
+export async function getQuizByID(quizId, quizType) {
+    try {
+        // Validate inputs
+        if (!quizId || typeof quizId !== 'string') {
+            throw new Error("INVALID_DECK_ID");
+        }
+        if (!quizType || typeof quizType !== 'string') {
+            throw new Error("INVALID_QUIZ_TYPE");
+        }
+
+        // Get quiz document
+        const quizSnap = await db.collection('quiz').doc(quizId).get();
+
+        if (!quizSnap.exists) {
+            return null;
+        }
+
+        const quiz = { id: quizSnap.id, ...quizSnap.data() };
+
+        // Verify quiz type
+        if (quiz.quiz_type !== quizType) {
+            throw new Error("QUIZ_TYPE_MISMATCH");
+        }
+
+        // Get question_and_answer subcollection
+        const questionsSnap = await db.collection('quiz').doc(quizId).collection('question_and_answers').get();
+
+        const questions = [];
+
+        for (const questionDoc of questionsSnap.docs) {
+            const questionData = { id: questionDoc.id, ...questionDoc.data() };
+
+            // Get choices subcollection for each question
+            const choicesSnap = await db.collection('quiz')
+                .doc(quizId)
+                .collection('question_and_answers')
+                .doc(questionDoc.id)
+                .collection('choices')
+                .get();
+
+            const choices = choicesSnap.docs.map(choiceDoc => ({
+                id: choiceDoc.id,
+                ...choiceDoc.data()
+            }));
+
+            questionData.choices = choices;
+            questions.push(questionData);
+        }
+
+        quiz.questions = questions;
+
+        return quiz;
+
+    } catch (error) {
+        console.error(`Error in getQuizByID (quizId: ${quizId}, quizType: ${quizType}):`, error);
+        throw new Error(error.message);
+    }
+}
+
+

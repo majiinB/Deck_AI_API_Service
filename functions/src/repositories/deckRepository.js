@@ -17,6 +17,7 @@
  * @updated 2025-03-19
  */
 
+import { logger } from 'firebase-functions';
 import { db, timeStamp } from '../config/firebaseAdminConfig.js';
 import { formatDeck } from '../models/deckModel.js';
 
@@ -69,9 +70,23 @@ export const getDeckAndCheckField = async (deckId, fieldName) => {
     try {
         // Validate inputs
         if (!deckId || typeof deckId !== 'string') {
+            logger.error(
+                "Deck was retrieved to check a field, but failed -",
+                "ERROR: INVALID_DECK_ID -",
+                "Deck ID provided? ", !deckId, "-",
+                "Deck ID is a type of string?", 
+                typeof deckId !== 'string',
+            );
             throw new Error("INVALID_DECK_ID");
         }
         if (!fieldName || typeof fieldName !== 'string') {
+            logger.error(
+                "Deck was retrieved to check a field, but failed -",
+                "ERROR: INVALID_DECK_ID -",
+                "Deck ID provided? ", !fieldName, "-",
+                "Deck ID is a type of string?", 
+                typeof fieldName !== 'string',
+            );
             throw new Error("INVALID_FIELD_NAME");
         }
 
@@ -79,11 +94,25 @@ export const getDeckAndCheckField = async (deckId, fieldName) => {
         const deckRef = db.collection('decks').doc(deckId);
         const deckSnap = await deckRef.get();
 
-        if (!deckSnap.exists) throw new Error("DECK_NOT_FOUND");
+        if (!deckSnap.exists) {
+            logger.error(
+                "Deck was retrieved to check a field, but failed -",
+                "ERROR: DECK_NOT_FOUND -",
+                "Deck ID provided? ", !deckId, "-",
+                "Deck ID is a type of string?", 
+                typeof deckId !== 'string',
+            );
+            throw new Error("DECK_NOT_FOUND");
+        }
 
         const deckData = deckSnap.data();
         
         if (!deckData.hasOwnProperty(fieldName))  {
+            logger.info(
+                "Deck was retrieved to check a field -",
+                "Deck exists?", true, "-",
+                "Deck property exists?", false,
+            );
             return {
                 exists: true,
                 field_exists: false,
@@ -91,6 +120,11 @@ export const getDeckAndCheckField = async (deckId, fieldName) => {
             }
         };
 
+        logger.info(
+            "Deck was retrieved to check a field -",
+            "Deck exists? ", true, "-",
+            "Deck property exists? ", true,
+        );
         return { 
             exists: true, 
             field_exists: true, 
@@ -98,7 +132,7 @@ export const getDeckAndCheckField = async (deckId, fieldName) => {
         };
 
     } catch (error) {
-        console.error(`Error in getDeckAndCheckField (deckId: ${deckId}, fieldName: ${fieldName}):`, error);
+        logger.error(`Error in getDeckAndCheckField (deckId: ${deckId}, fieldName: ${fieldName}):`, error);
         throw new Error(error.message);
     }
 };
