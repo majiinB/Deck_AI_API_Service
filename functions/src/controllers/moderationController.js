@@ -19,8 +19,9 @@
 import { geminiModerationService } from '../services/moderationService.js';
 
 export const geminiModerationController = async (req, res) => {
+    console.log("this is moderation entered");
     const { deckId } = req.body;
-    const userId = req.params.id;
+    const userId = req.user?.user_id;
 
     if (!deckId || !deckId.trim()) {
         return res.status(400).json(
@@ -35,7 +36,7 @@ export const geminiModerationController = async (req, res) => {
 
     try {
         const result = await geminiModerationService(deckId, userId);
-
+        console.log("this is moderation result" + result);
         return res.status(result.status).send(result);
     } catch (error) {
         console.error("Unexpected error in moderation:", error);

@@ -19,8 +19,9 @@
 import { geminiQuizService } from '../services/quizService.js';
 
 export const geminiQuizController = async (req, res) => {
-    const { deckId } = req.body;
+    const { deckId, numOfQuiz } = req.body;
     const userId = req.user?.user_id;
+    const limit = numOfQuiz ? parseInt(numOfQuiz, 10) : null;
 
     if (!deckId || !deckId.trim()) {
         return res.status(400).json(
@@ -33,8 +34,20 @@ export const geminiQuizController = async (req, res) => {
         );
     }
 
+     if (limit !== null) {
+        if (isNaN(limit) || (limit < 5 || limit > 50)) {
+            return res.status(400).json(
+            {
+                status: 400,
+                request_owner_id: userId,
+                message: "Invalid limit value. It must be a positive number greater than or equal to five and less than 50.",
+                data: null
+            });
+        }
+      }
+
     try {
-        const result = await geminiQuizService(deckId, userId);
+        const result = await geminiQuizService(deckId, userId, limit);
 
         return res.status(result.status).send(result);
     } catch (error) {

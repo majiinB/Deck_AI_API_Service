@@ -23,6 +23,7 @@ import { timeStamp } from "../config/firebaseAdminConfig.js";
 import { logger } from "firebase-functions";
 import path from 'path';
 import { writeFile } from "fs/promises";
+import { fischerYatesShuffle } from "../utils/utils.js";
 
 /**
  * Generates a quiz for a given deck by checking existing quizzes and using AI to generate new questions if needed.
@@ -34,7 +35,7 @@ import { writeFile } from "fs/promises";
  * @returns {Promise<Object>} - Returns an object containing the quiz ID or a message indicating quiz creation status.
  * @throws {Error} - Throws an error if the deck is invalid, AI response fails, or Firestore operations encounter an issue.
  */
-export const geminiQuizService = async (deckId, id) => {
+export const geminiQuizService = async (deckId, id, numOfQuiz) => {
     const aiResponses = [];
     const batchSize = 20;
     let quizId = "";
@@ -135,6 +136,27 @@ export const geminiQuizService = async (deckId, id) => {
                 await updateDeck(deckId, {made_to_quiz_at: timeStamp});
 
                 const quizObject = await getQuizByID(quizId, "multiple-choice");
+                const quizzes =  quizObject.questions;
+                
+                const shuffledQuizzes = fischerYatesShuffle(quizzes);
+
+                let numToReturn = numOfQuiz;
+
+                if (numToReturn === null || numToReturn === undefined) {
+                    // 4. Edge case: No numOfCards provided
+                    numToReturn = Math.ceil(shuffledQuizzes.length * 0.5); // Default to 50%
+                }
+
+                if (numToReturn > shuffledQuizzes.length) {
+                    const error = new Error("Requested number of flashcards exceeds available cards.");
+                    error.name = "EXCEEDS_AVAILABLE_CARDS";
+                    throw error;
+                }
+
+                const selectedQuizzes = shuffledQuizzes.slice(0, numToReturn);
+
+                quizObject.questions = selectedQuizzes;
+                
                 // Response data
                 statusCode = 200;
                 data = {quizContent: quizObject}
@@ -149,34 +171,77 @@ export const geminiQuizService = async (deckId, id) => {
             const numOfNewFlashCards = newFlashcards.length;
 
             if(numOfNewFlashCards > 0){
-                for (let i = 0; i < newFlashcards.length; i += batchSize) {
-                    const batch = newFlashcards.slice(i, i + batchSize);
-                    const prompt = quizPrompt(batch.length);
 
-                    let result;
-                    try {
-                        result = await sendPromptInline(quizSchema, prompt, formatData(batch));
-                        console.log(result);
-                        if (!result.quiz_data || !Array.isArray(result.quiz_data.quiz)) {
-                            throw new Error("Invalid AI response: quiz_data is missing or not an array");
-                        }
-                    } catch (error) {
-                        throw new Error("AI_GENERATION_FAILED");
+                const quizzesToString = `${JSON.stringify(newFlashcards, null, 2)}` ;
+                const tmpDir = '/tmp';
+                const destFilename = `downloadQuiz-${id}.txt`;
+                const tmpFilePath = path.join(tmpDir, destFilename);
+                await writeFile(tmpFilePath, quizzesToString);
+
+                const prompt = quizPrompt(newFlashcards.length);
+                let result;
+                try {
+                    result = await sendPromptInline(quizSchema, prompt, tmpFilePath, 'txt');
+                    if (!result.quiz_data || !Array.isArray(result.quiz_data.quiz)) {
+                        throw new Error("Invalid AI response: quiz_data is missing or not an array");
                     }
-
-                    const questionAndAnswer = result.quiz_data.quiz;
-                    await createQuestionAndAnswer(quizId, questionAndAnswer);
+                } catch (error) {
+                    throw new Error("AI_GENERATION_FAILED");
                 }
+
+                const questionAndAnswer = result.quiz_data.quiz;
+                await createQuestionAndAnswer(quizId, questionAndAnswer);
+                
 
                 await updateDeck(deckId, {made_to_quiz_at: timeStamp});
 
                 const quizObject = await getQuizByID(quizId, "multiple-choice");
+                const quizzes =  quizObject.questions;
+                
+                const shuffledQuizzes = fischerYatesShuffle(quizzes);
+
+                let numToReturn = numOfQuiz;
+
+                if (numToReturn === null || numToReturn === undefined) {
+                    // 4. Edge case: No numOfCards provided
+                    numToReturn = Math.ceil(shuffledQuizzes.length * 0.5); // Default to 50%
+                }
+
+                if (numToReturn > shuffledQuizzes.length) {
+                    const error = new Error("Requested number of flashcards exceeds available cards.");
+                    error.name = "EXCEEDS_AVAILABLE_CARDS";
+                    throw error;
+                }
+
+                const selectedQuizzes = shuffledQuizzes.slice(0, numToReturn);
+
+                quizObject.questions = selectedQuizzes;
 
                 statusCode = 200;
                 data = {quizContent: quizObject}
                 message = `Quiz creation for new flashcards in deck ${deckId} is successful`
-            } else{
+            } else {
                 const quizObject = await getQuizByID(quizId, "multiple-choice");
+                const quizzes =  quizObject.questions;
+
+                const shuffledQuizzes = fischerYatesShuffle(quizzes);
+
+                let numToReturn = numOfQuiz;
+
+                if (numToReturn === null || numToReturn === undefined) {
+                    // 4. Edge case: No numOfCards provided
+                    numToReturn = Math.ceil(shuffledQuizzes.length * 0.5); // Default to 50%
+                }
+
+                if (numToReturn > shuffledQuizzes.length) {
+                    const error = new Error("Requested number of flashcards exceeds available cards.");
+                    error.name = "EXCEEDS_AVAILABLE_CARDS";
+                    throw error;
+                }
+
+                const selectedQuizzes = shuffledQuizzes.slice(0, numToReturn);
+
+                quizObject.questions = selectedQuizzes;
 
                 statusCode = 200;
                 data = {quizContent: quizObject};
